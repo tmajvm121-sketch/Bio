@@ -1,0 +1,243 @@
+<title>2050년 생명 기술 퀴즈</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Jua&family=Noto+Sans+KR:wght@400;500;700&display=swap">
+<style>
+/* 레이아웃: 한 화면에 한 문제. 위에 장면 그림, 아래에 보기 세 개. 결과는 마지막 화면. */
+:root {
+  --bg: #EEF5F1;
+  --ink: #12332B;
+  --muted: #4C625A;
+  --surface: #FFFFFF;
+  --line: #CFE0D8;
+  --accent: #17705B;
+  --accent-ink: #FFFFFF;
+  --warm: #E8833A;
+  --good: #17705B;
+  --good-bg: #DDF1E7;
+  --bad: #A04A0C;
+  --bad-bg: #FBE6D3;
+  --font-display: "Jua", "Noto Sans KR", sans-serif;
+  --font-body: "Noto Sans KR", system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0E1F1B; --ink: #E8F2EE; --muted: #9DB8B0; --surface: #16302A; --line: #264A41;
+    --accent: #4CC9A5; --accent-ink: #0E1F1B; --warm: #F2A56B;
+    --good: #7FD1B9; --good-bg: #1B4A3F; --bad: #F2A56B; --bad-bg: #3D2A1A;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0E1F1B; --ink: #E8F2EE; --muted: #9DB8B0; --surface: #16302A; --line: #264A41;
+  --accent: #4CC9A5; --accent-ink: #0E1F1B; --warm: #F2A56B;
+  --good: #7FD1B9; --good-bg: #1B4A3F; --bad: #F2A56B; --bad-bg: #3D2A1A;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  background: var(--bg); color: var(--ink);
+  font-family: var(--font-body); font-size: 18px; line-height: 1.55;
+  padding-block: 20px 40px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+main { max-width: 720px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px; }
+.top { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.brand { font-size: 16px; font-weight: 700; color: var(--muted); letter-spacing: 0.04em; }
+.dots { display: flex; gap: 8px; }
+.dot { width: 14px; height: 14px; border-radius: 50%; background: var(--line); }
+.dot.on { background: var(--accent); }
+.dot.now { outline: 3px solid var(--warm); outline-offset: 2px; }
+h1, h2 { font-family: var(--font-display); font-weight: 400; line-height: 1.2; text-wrap: balance; margin: 0; }
+h1 { font-size: clamp(34px, 8vw, 52px); }
+h2 { font-size: clamp(26px, 6vw, 34px); }
+p { margin: 0; }
+.muted { color: var(--muted); }
+.scene { border-radius: 20px; overflow: hidden; border: 1px solid var(--line); background: var(--surface); }
+.scene svg { display: block; width: 100%; height: auto; }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 20px; padding: 24px; display: flex; flex-direction: column; gap: 16px; }
+.field { display: inline-block; align-self: flex-start; font-size: 15px; font-weight: 700; padding: 4px 14px; border-radius: 999px; background: var(--good-bg); color: var(--good); }
+.choices { display: grid; gap: 12px; }
+button { font: inherit; cursor: pointer; }
+.choice, .go {
+  min-height: 60px; padding: 14px 20px; border-radius: 16px; text-align: left;
+  border: 2px solid var(--line); background: var(--surface); color: var(--ink); font-weight: 700;
+}
+.choice:hover:not(:disabled) { border-color: var(--accent); }
+.choice:disabled { cursor: default; }
+.choice.right { border-color: var(--good); background: var(--good-bg); color: var(--good); }
+.choice.wrong { border-color: var(--bad); background: var(--bad-bg); color: var(--bad); }
+.go { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); text-align: center; font-size: 19px; }
+.go:hover { filter: brightness(1.08); }
+:focus-visible { outline: 3px solid var(--warm); outline-offset: 3px; }
+.verdict { font-family: var(--font-display); font-size: 26px; }
+.verdict.right { color: var(--good); }
+.verdict.wrong { color: var(--bad); }
+.score { font-family: var(--font-display); font-size: clamp(64px, 18vw, 110px); line-height: 1; color: var(--accent); }
+.rows { display: grid; gap: 10px; }
+.row { display: grid; grid-template-columns: auto 1fr; gap: 6px 14px; align-items: baseline; padding: 12px 0; border-top: 1px solid var(--line); }
+.row b { min-width: 0; }
+.tag { font-size: 14px; font-weight: 700; padding: 2px 12px; border-radius: 999px; }
+.tag.right { background: var(--good-bg); color: var(--good); }
+.tag.wrong { background: var(--bad-bg); color: var(--bad); }
+.row .sub { grid-column: 2; font-size: 16px; color: var(--muted); }
+.chips { display: flex; flex-wrap: wrap; gap: 10px; }
+.chip { padding: 8px 18px; border-radius: 999px; border: 2px solid var(--line); font-weight: 700; }
+@media (prefers-reduced-motion: no-preference) {
+  .panel, .scene { animation: rise 0.35s ease-out; }
+  @keyframes rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+}
+</style>
+
+<main>
+  <div class="top">
+    <span class="brand">기술·가정 · 생명 기술의 활용과 미래</span>
+    <div class="dots" id="dots" aria-hidden="true"></div>
+  </div>
+  <div id="view" aria-live="polite"></div>
+</main>
+
+<script>
+(function () {
+  var SCENES = {
+    plant: '<svg viewBox="0 0 400 240" role="img" aria-label="실내 선반에서 분홍빛 조명을 받으며 자라는 채소들"><defs><g id="pl"><rect x="-2" y="0" width="4" height="12" fill="#2F9E64"/><ellipse cx="-9" cy="-4" rx="10" ry="6" fill="#4CD08A"/><ellipse cx="9" cy="-4" rx="10" ry="6" fill="#4CD08A"/><ellipse cx="0" cy="-10" rx="7" ry="9" fill="#6BE3A4"/></g></defs><rect width="400" height="240" fill="#241A3F"/><rect x="30" y="28" width="340" height="6" fill="#FF6FD8"/><polygon points="30,34 370,34 400,100 0,100" fill="#FF6FD8" opacity="0.13"/><rect x="30" y="100" width="340" height="8" fill="#8B8FA8"/><rect x="30" y="108" width="340" height="5" fill="#FF6FD8"/><polygon points="30,113 370,113 400,172 0,172" fill="#FF6FD8" opacity="0.13"/><rect x="30" y="172" width="340" height="8" fill="#8B8FA8"/><rect x="30" y="180" width="340" height="5" fill="#FF6FD8"/><rect x="30" y="226" width="340" height="8" fill="#8B8FA8"/><rect x="30" y="28" width="8" height="206" fill="#6C708C"/><rect x="362" y="28" width="8" height="206" fill="#6C708C"/><use href="#pl" x="75" y="92"/><use href="#pl" x="135" y="92"/><use href="#pl" x="195" y="92"/><use href="#pl" x="255" y="92"/><use href="#pl" x="315" y="92"/><use href="#pl" x="75" y="164"/><use href="#pl" x="135" y="164"/><use href="#pl" x="195" y="164"/><use href="#pl" x="255" y="164"/><use href="#pl" x="315" y="164"/><use href="#pl" x="75" y="218"/><use href="#pl" x="135" y="218"/><use href="#pl" x="195" y="218"/><use href="#pl" x="255" y="218"/><use href="#pl" x="315" y="218"/></svg>',
+    organ: '<svg viewBox="0 0 400 240" role="img" aria-label="3D 프린터가 심장 모양 조직을 한 층씩 쌓아 만드는 모습"><rect width="400" height="240" fill="#E6EEF6"/><rect x="90" y="36" width="14" height="176" fill="#4A5568"/><rect x="296" y="36" width="14" height="176" fill="#4A5568"/><rect x="90" y="36" width="220" height="14" fill="#4A5568"/><rect x="170" y="50" width="60" height="8" fill="#718096"/><rect x="182" y="58" width="36" height="30" rx="4" fill="#E8833A"/><polygon points="194,88 206,88 200,104" fill="#B8581C"/><path d="M200 190 C166 162 154 132 178 126 C190 123 200 131 200 138 C200 131 210 123 222 126 C246 132 234 162 200 190Z" fill="#E04F5F"/><path d="M178 140 H222 M182 152 H218 M188 164 H212 M194 176 H206" stroke="#FFFFFF" stroke-opacity="0.45" stroke-width="2" fill="none"/><rect x="130" y="192" width="140" height="10" rx="3" fill="#94A3B8"/><rect x="110" y="202" width="180" height="10" fill="#64748B"/><circle cx="332" cy="70" r="6" fill="#2F9E64"/><circle cx="332" cy="92" r="6" fill="#E8833A"/></svg>',
+    bus: '<svg viewBox="0 0 400 240" role="img" aria-label="잎 그림이 붙은 초록색 버스가 도로를 달리는 모습"><rect width="400" height="240" fill="#CFEFE0"/><circle cx="330" cy="50" r="26" fill="#FFE08A"/><circle cx="60" cy="150" r="30" fill="#7CCB9F"/><circle cx="96" cy="160" r="24" fill="#6BBF92"/><rect x="0" y="196" width="400" height="44" fill="#3B4A45"/><rect x="20" y="215" width="40" height="5" fill="#D9E6E0"/><rect x="120" y="215" width="40" height="5" fill="#D9E6E0"/><rect x="220" y="215" width="40" height="5" fill="#D9E6E0"/><rect x="320" y="215" width="40" height="5" fill="#D9E6E0"/><rect x="70" y="106" width="260" height="88" rx="16" fill="#17705B"/><rect x="92" y="122" width="46" height="34" rx="5" fill="#D9F2EA"/><rect x="146" y="122" width="46" height="34" rx="5" fill="#D9F2EA"/><rect x="200" y="122" width="46" height="34" rx="5" fill="#D9F2EA"/><rect x="254" y="122" width="56" height="52" rx="5" fill="#D9F2EA"/><path d="M118 186 C108 172 112 160 128 160 C140 160 144 170 138 178 C134 184 126 188 118 186Z" fill="#F6F3EA"/><path d="M118 186 C124 176 130 170 136 166" stroke="#17705B" stroke-width="2" fill="none"/><circle cx="118" cy="196" r="20" fill="#12332B"/><circle cx="118" cy="196" r="8" fill="#9DB8B0"/><circle cx="278" cy="196" r="20" fill="#12332B"/><circle cx="278" cy="196" r="8" fill="#9DB8B0"/></svg>',
+    pack: '<svg viewBox="0 0 400 240" role="img" aria-label="흙에서 새싹이 자라는 모양의 투명한 친환경 포장 용기"><rect width="400" height="240" fill="#F3E7D2"/><ellipse cx="200" cy="214" rx="130" ry="12" fill="#000000" opacity="0.08"/><rect x="120" y="86" width="160" height="124" rx="14" fill="#E4F2EC" stroke="#17705B" stroke-width="4"/><rect x="112" y="72" width="176" height="22" rx="8" fill="#17705B"/><rect x="132" y="170" width="136" height="32" rx="8" fill="#8A5A2B"/><path d="M200 170 C200 146 200 132 200 118" stroke="#2F9E64" stroke-width="6" fill="none" stroke-linecap="round"/><path d="M200 140 C176 140 164 126 164 112 C186 112 200 124 200 140Z" fill="#4CD08A"/><path d="M200 126 C224 126 238 112 238 98 C216 98 200 110 200 126Z" fill="#6BE3A4"/><circle cx="150" cy="120" r="5" fill="#8FD3B6"/><circle cx="252" cy="150" r="5" fill="#8FD3B6"/><circle cx="148" cy="156" r="3" fill="#8FD3B6"/></svg>'
+  };
+  var CHOICES = [['now', '이미 쓰이고 있어요'], ['research', '연구 중이에요'], ['future', '아직 먼 미래예요']];
+  var LABEL = { now: '이미 쓰이고 있어요', research: '연구 중이에요', future: '아직 먼 미래예요' };
+  var Q = [
+    { name: '식물 공장', field: '농업·식량', scene: 'plant', answer: 'now',
+      why: '빛, 온도, 양분을 조절해 실내에서 식물을 기르는 기술이에요. 식물 공장은 이미 만들어져 쓰이고 있어요.' },
+    { name: '3D 프린터로 만든 인공 장기', field: '의료', scene: 'organ', answer: 'research',
+      why: '바이오 프린팅과 인공 장기 기술은 계속 발달하고 있어요. 장기를 통째로 프린터로 만드는 일은 아직 연구 단계예요.' },
+    { name: '바이오 연료 버스', field: '에너지', scene: 'bus', answer: 'now',
+      why: '바이오 디젤, 바이오 에탄올 같은 바이오 에너지는 이미 연료로 쓰이고 있어요.' },
+    { name: '생분해 플라스틱 포장', field: '환경', scene: 'pack', answer: 'now',
+      why: '토양 속 미생물이 쉽게 분해하는 생분해성 플라스틱은 이미 만들어 쓰고 있어요.' }
+  ];
+  var view = document.getElementById('view');
+  var dotsEl = document.getElementById('dots');
+  var state = { i: -1, picks: [], answered: false };
+
+  function el(tag, cls, text) {
+    var e = document.createElement(tag);
+    if (cls) e.className = cls;
+    if (text != null) e.textContent = text;
+    return e;
+  }
+  function drawDots() {
+    dotsEl.textContent = '';
+    for (var k = 0; k < Q.length; k++) {
+      var d = el('span', 'dot');
+      if (k < state.picks.length || (state.i === Q.length)) d.classList.add('on');
+      if (k === state.i && state.i < Q.length) d.classList.add('now');
+      dotsEl.appendChild(d);
+    }
+  }
+  function sceneBox(key) {
+    var s = el('div', 'scene');
+    s.innerHTML = SCENES[key];
+    return s;
+  }
+  function start() {
+    state = { i: -1, picks: [], answered: false };
+    drawDots();
+    view.textContent = '';
+    var p = el('div', 'panel');
+    p.appendChild(el('span', 'field', '도입 퀴즈'));
+    p.appendChild(el('h1', null, '2050년 우리 마을의 하루'));
+    p.appendChild(el('p', 'muted', '미래 마을의 장면 네 개가 나와요. 각 기술이 지금 어디까지 왔는지 혼자 골라 보세요.'));
+    var chips = el('div', 'chips');
+    ['농업·식량', '의료', '에너지', '환경'].forEach(function (t) { chips.appendChild(el('span', 'chip', t)); });
+    p.appendChild(chips);
+    var b = el('button', 'go', '시작하기');
+    b.type = 'button';
+    b.addEventListener('click', function () { state.i = 0; showQ(); });
+    p.appendChild(b);
+    view.appendChild(p);
+    b.focus({ preventScroll: true });
+  }
+  function showQ() {
+    state.answered = false;
+    drawDots();
+    var q = Q[state.i];
+    view.textContent = '';
+    var wrap = el('div', null);
+    wrap.style.display = 'flex'; wrap.style.flexDirection = 'column'; wrap.style.gap = '20px';
+    wrap.appendChild(sceneBox(q.scene));
+    var p = el('div', 'panel');
+    p.appendChild(el('span', 'field', (state.i + 1) + ' / ' + Q.length + ' · ' + q.field));
+    p.appendChild(el('h2', null, q.name));
+    p.appendChild(el('p', 'muted', '이 기술은 지금 어디까지 왔을까요?'));
+    var list = el('div', 'choices');
+    var btns = [];
+    CHOICES.forEach(function (c) {
+      var b = el('button', 'choice', c[1]);
+      b.type = 'button';
+      b.addEventListener('click', function () { answer(c[0], btns, p); });
+      btns.push({ key: c[0], node: b });
+      list.appendChild(b);
+    });
+    p.appendChild(list);
+    wrap.appendChild(p);
+    view.appendChild(wrap);
+  }
+  function answer(key, btns, panel) {
+    if (state.answered) return;
+    state.answered = true;
+    var q = Q[state.i];
+    state.picks.push(key);
+    drawDots();
+    btns.forEach(function (b) {
+      b.node.disabled = true;
+      if (b.key === q.answer) b.node.classList.add('right');
+      else if (b.key === key) b.node.classList.add('wrong');
+    });
+    var ok = key === q.answer;
+    var v = el('p', 'verdict ' + (ok ? 'right' : 'wrong'), ok ? '맞아요!' : '아쉬워요. 정답은 “' + LABEL[q.answer] + '”예요.');
+    panel.appendChild(v);
+    panel.appendChild(el('p', null, q.why));
+    var last = state.i === Q.length - 1;
+    var next = el('button', 'go', last ? '결과 보기' : '다음 문제');
+    next.type = 'button';
+    next.addEventListener('click', function () {
+      if (last) { state.i = Q.length; showResult(); } else { state.i += 1; showQ(); }
+    });
+    panel.appendChild(next);
+    next.focus({ preventScroll: false });
+  }
+  function showResult() {
+    drawDots();
+    view.textContent = '';
+    var score = 0;
+    Q.forEach(function (q, k) { if (state.picks[k] === q.answer) score += 1; });
+    var p = el('div', 'panel');
+    p.appendChild(el('span', 'field', '퀴즈 결과'));
+    var s = el('p', 'score', score + ' / ' + Q.length);
+    p.appendChild(s);
+    var msg = score === Q.length ? '모두 맞혔어요! 생명 기술이 얼마나 가까이 와 있는지 잘 알고 있네요.'
+      : score >= 2 ? '잘했어요! 틀린 문제는 오늘 수업에서 더 자세히 알아봐요.'
+      : '괜찮아요. 오늘 수업에서 하나씩 알아가요.';
+    p.appendChild(el('h2', null, msg));
+    var rows = el('div', 'rows');
+    Q.forEach(function (q, k) {
+      var ok = state.picks[k] === q.answer;
+      var r = el('div', 'row');
+      r.appendChild(el('span', 'tag ' + (ok ? 'right' : 'wrong'), ok ? '맞음' : '틀림'));
+      r.appendChild(el('b', null, q.name));
+      r.appendChild(el('span', 'sub', '정답: ' + LABEL[q.answer] + (ok ? '' : ' · 내 선택: ' + LABEL[state.picks[k]])));
+      rows.appendChild(r);
+    });
+    p.appendChild(rows);
+    p.appendChild(el('p', null, '그렇다면 2050년에는 또 무엇이 달라질까요? 교과서를 펼치고 내 분야를 골라 보세요.'));
+    var again = el('button', 'go', '다시 풀어 보기');
+    again.type = 'button';
+    again.addEventListener('click', start);
+    p.appendChild(again);
+    view.appendChild(p);
+  }
+  start();
+})();
+</script>
