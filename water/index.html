@@ -155,6 +155,20 @@ button.btn:disabled{opacity:.55;cursor:default}
     </div>
     <p class="hint">캡처한 이미지를 데스모스에 올리고, 판정이 맞는지 내 생각을 함께 써 주세요.</p>
   </section>
+
+  <section class="panel" id="teacherPanel" hidden aria-labelledby="teacher-h">
+    <div style="display:grid;gap:4px">
+      <span class="eyebrow">선생님 화면에서만 보여요</span>
+      <h2 id="teacher-h">학생 판정서로 AI 판정</h2>
+    </div>
+    <p class="hint">데스모스에 올라온 학생 판정서 캡처를 넣으면, AI가 이미지 속 해결책을 읽고 판정 기준 3가지로 다시 판정해요. 이미지를 복사해 이 화면에 붙여 넣어도 돼요.</p>
+    <label for="shot">판정서 이미지<input type="file" id="shot" accept="image/png,image/jpeg,image/webp"></label>
+    <img id="shotPreview" hidden alt="넣은 학생 판정서" style="max-height:320px;width:auto;border:1px solid var(--line);border-radius:6px">
+    <div class="actions">
+      <button type="button" class="btn primary" id="shotBtn" disabled>이미지로 AI 판정 받기</button>
+    </div>
+    <p class="status" id="shotStatus" role="status" aria-live="polite"></p>
+  </section>
 </div>
 
 <div class="modal" id="modal" hidden role="dialog" aria-modal="true" aria-labelledby="modal-h">
@@ -333,17 +347,22 @@ $("resetBtn").addEventListener("click",()=>{
 
 /* ---------- AI judge (only where this view can ask Claude) ---------- */
 let sample=null;
-function aiPrompt(s){
-  return `너는 중학교 3학년 기술·가정 적정기술 수업의 판정 도우미야. 아래 마을 형편과 학생 해결책을 보고 판정 기준 3가지로 채점하고, 무엇이 문제인지 알려 줘.
-
-[마을] 비가 적고 햇빛이 강하다. 전기가 없고 땔감이 귀하다. 돈이 넉넉하지 않고 도시 시장까지 걸어서 하루. 강물이 흐려 아이들이 설사병에 자주 걸린다.
+function brief(){
+  return `[마을] 비가 적고 햇빛이 강하다. 전기가 없고 땔감이 귀하다. 돈이 넉넉하지 않고 도시 시장까지 걸어서 하루. 강물이 흐려 아이들이 설사병에 자주 걸린다.
 [마을에서 쉽게 얻는 것] ${MATERIALS.join(", ")}
 [마을에서 쉽게 얻을 수 없는 것] ${Object.keys(OUTSIDE).map(k=>k+"("+OUTSIDE[k].why+")").join(", ")}, 전기, 땔감을 매일 쓰는 일
 
 [판정 기준]
 1. 주변에서 쉽게 얻는 재료만 썼나요?
 2. 만드는 방법이 잘 되었나요? (물이 정말 깨끗하고 안전해지는가. 모래·숯으로 거르기만 하면 세균이 남을 수 있고, 흐린 물은 햇빛 소독이 잘 안 된다)
-3. 만드는 방법이 쉬운가요? (마을 사람 누구나 따라 만들고 쓸 수 있는가)
+3. 만드는 방법이 쉬운가요? (마을 사람 누구나 따라 만들고 쓸 수 있는가)`;
+}
+const RULES=`중학생이 이해할 쉬운 말로, 이유는 기준마다 한두 문장으로 써. 문제가 있으면 무엇이 왜 문제인지 분명히 말해 줘.
+mark는 맞으면 "ok", 일부만 맞으면 "partial", 아니면 "no".`;
+function aiPrompt(s){
+  return `너는 중학교 3학년 기술·가정 적정기술 수업의 판정 도우미야. 아래 마을 형편과 학생 해결책을 보고 판정 기준 3가지로 채점하고, 무엇이 문제인지 알려 줘.
+
+${brief()}
 
 [학생 해결책]
 이름: ${s.title}
@@ -353,8 +372,7 @@ function aiPrompt(s){
 ${s.method.slice(0,1500)}
 원리: ${s.principle||"없음"}
 
-중학생이 이해할 쉬운 말로, 이유는 기준마다 한두 문장으로 써. 문제가 있으면 무엇이 왜 문제인지 분명히 말해 줘.
-mark는 맞으면 "ok", 일부만 맞으면 "partial", 아니면 "no".
+${RULES}
 다음 모양의 JSON만 답해:
 {"conditions":[{"mark":"ok","reason":"..."},{"mark":"...","reason":"..."},{"mark":"...","reason":"..."}],"tips":["고칠 점 최대 3개"]}`;
 }
@@ -363,11 +381,7 @@ $("aiBtn").addEventListener("click",async()=>{
   const btn=$("aiBtn");btn.disabled=true;$("status").textContent="AI가 판정하고 있어요…";
   try{
     const out=await sample.json(aiPrompt(s));
-    const ok=v=>["ok","partial","no"].includes(v);
-    const conds=Array.isArray(out?.conditions)?out.conditions.slice(0,CONDS.length).map(c=>({mark:ok(c?.mark)?c.mark:"partial",reason:String(c?.reason||"")})):[];
-    if(conds.length<CONDS.length) throw {code:"invalid_json"};
-    const tips=Array.isArray(out?.tips)?out.tips.map(String).filter(Boolean).slice(0,3):[];
-    render(s,{conditions:conds,tips},"ai");$("status").textContent="";
+    render(s,parseAI(out),"ai");$("status").textContent="";
     $("report").scrollIntoView({block:"start"});
   }catch(e){
     const c=e&&e.code;
@@ -375,6 +389,58 @@ $("aiBtn").addEventListener("click",async()=>{
     else if(c==="rate_limited"){$("status").textContent="요청이 많아요. 잠시 뒤에 다시 눌러 주세요.";}
     else if(c==="cancelled"){$("status").textContent="";}
     else {$("status").textContent="AI 판정을 받지 못했어요. 다시 누르거나 '판정 받기'를 써 주세요.";}
+  }finally{btn.disabled=false;}
+});
+
+/* ---------- teacher: judge a student's captured report image ---------- */
+let shotFile=null;
+function setShot(file){
+  if(!file||!/^image\//.test(file.type)){$("shotStatus").textContent="이미지 파일을 넣어 주세요.";return;}
+  shotFile=file;
+  const img=$("shotPreview");img.src=URL.createObjectURL(file);img.hidden=false;
+  $("shotBtn").disabled=false;$("shotStatus").textContent="";
+}
+$("shot").addEventListener("change",e=>setShot(e.target.files&&e.target.files[0]));
+document.addEventListener("paste",e=>{
+  if($("teacherPanel").hidden)return;
+  const item=[...(e.clipboardData?.items||[])].find(i=>i.type.startsWith("image/"));
+  if(item){e.preventDefault();setShot(item.getAsFile());}
+});
+function shotPrompt(){
+  return `너는 중학교 3학년 기술·가정 적정기술 수업의 판정 도우미야.
+함께 보낸 이미지는 학생이 '물빛 마을 판정기'에서 캡처한 판정서야. 이미지에 적힌 판정 결과(○△×, 점수, 고칠 점)는 참고하지 말고, 학생이 쓴 해결책(이름, 고른 재료, 방법, 원리)만 읽어서 판정 기준 3가지로 새로 판정해.
+이미지가 흐려 읽을 수 없는 부분은 읽은 만큼만 판단하고 그 사실을 이유에 밝혀.
+
+${brief()}
+
+${RULES}
+다음 모양의 JSON만 답해:
+{"solution":{"title":"해결책 이름","materials":["재료"],"steps":["방법 한 단계씩"],"principle":"원리"},"conditions":[{"mark":"ok","reason":"..."},{"mark":"...","reason":"..."},{"mark":"...","reason":"..."}],"tips":["고칠 점 최대 3개"]}`;
+}
+function parseAI(out){
+  const ok=v=>["ok","partial","no"].includes(v);
+  const conds=Array.isArray(out?.conditions)?out.conditions.slice(0,CONDS.length).map(c=>({mark:ok(c?.mark)?c.mark:"partial",reason:String(c?.reason||"")})):[];
+  if(conds.length<CONDS.length) throw {code:"invalid_json"};
+  const tips=Array.isArray(out?.tips)?out.tips.map(String).filter(Boolean).slice(0,3):[];
+  return {conditions:conds,tips};
+}
+$("shotBtn").addEventListener("click",async()=>{
+  if(!sample||!shotFile)return;
+  const btn=$("shotBtn");btn.disabled=true;$("shotStatus").textContent="AI가 판정서를 읽고 판정하고 있어요…";
+  try{
+    const out=await sample.json(shotPrompt(),{images:[shotFile]});
+    const res=parseAI(out);
+    const sol=out.solution||{};
+    const s={title:String(sol.title||"(이름을 읽지 못함)"),mats:new Set((Array.isArray(sol.materials)?sol.materials:[]).map(String)),extra:"",
+      method:(Array.isArray(sol.steps)?sol.steps:[]).map(String).join("\n"),principle:String(sol.principle||"")};
+    render(s,res,"ai");$("shotStatus").textContent="판정했어요. 위 판정서에서 확인하세요.";
+    $("report").scrollIntoView({block:"start"});
+  }catch(e){
+    const c=e&&e.code;
+    if(c==="image_rejected") $("shotStatus").textContent="이 이미지는 읽을 수 없어요. PNG나 JPG 캡처로 다시 넣어 주세요.";
+    else if(c==="rate_limited") $("shotStatus").textContent="요청이 많아요. 잠시 뒤에 다시 눌러 주세요.";
+    else if(c==="not_granted"||c==="images_unavailable"||c==="sampling_disabled"){$("teacherPanel").hidden=true;}
+    else if(c!=="cancelled") $("shotStatus").textContent="AI 판정을 받지 못했어요. 다시 눌러 주세요.";
   }finally{btn.disabled=false;}
 });
 
@@ -389,7 +455,7 @@ $("capBtn").addEventListener("click",async()=>{
     const canvas=await html2canvas($("report"),{scale:2,backgroundColor:bg,useCORS:true,logging:false});
     const url=canvas.toDataURL("image/png");
     lastBlob=await new Promise(r=>canvas.toBlob(r,"image/png"));
-    lastName="물빛마을_판정서_"+((readForm().title||"해결책").replace(/[\\/:*?"<>|]/g,"").slice(0,30)||"해결책")+".png";
+    lastName="물빛마을_판정서_"+(($("rTitle").textContent||"해결책").replace(/[\\/:*?"<>|()]/g,"").trim().slice(0,30)||"해결책")+".png";
     $("capImg").src=url;$("saveStatus").textContent="";
     $("saveBtn").hidden=!(downloads||standalone);
     $("capHint").textContent=(downloads||standalone)?"저장 버튼을 누르거나, 이미지를 길게 눌러 저장하세요.":"이미지를 길게 눌러 저장하거나, 이 화면을 캡처해 주세요.";
@@ -418,7 +484,11 @@ const EXAMPLE={title:"숯 모래 정수 병",mats:new Set(["페트병","자갈",
 render(EXAMPLE,judge(EXAMPLE),"example");
 loadDraft();
 if(window.claude&&typeof window.claude.use==="function"){
-  window.claude.use("sample").then(s=>{if(s){sample=s;$("aiBtn").hidden=false;}}).catch(()=>{});
+  window.claude.use("sample").then(s=>{
+    if(!s)return;
+    sample=s;$("aiBtn").hidden=false;
+    s.limits().then(l=>{if(l&&l.images){$("teacherPanel").hidden=false;if(l.images.mediaTypes)$("shot").accept=l.images.mediaTypes.join(",");}}).catch(()=>{});
+  }).catch(()=>{});
   window.claude.use("downloads").then(d=>{downloads=d||null;}).catch(()=>{});
 }
 </script>
