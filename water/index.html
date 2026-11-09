@@ -1,0 +1,425 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font:14px system-ui,sans-serif}img{max-width:100%}[hidden]{display:none!important}</style></head><body><title>물빛 마을 판정기</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Do+Hyeon&family=Gowun+Dodum&display=swap">
+<style>
+/* Layout: one narrow column — village brief, the student's design form, then a field "판정서" card that gets captured as an image. */
+:root{
+  --bg:#eaf1f0; --surface:#ffffff; --sunk:#f4f8f7; --ink:#1c2a2d; --muted:#5a6b6e;
+  --line:#cfdcda; --river:#1d6b86; --river-ink:#ffffff; --sand:#efe5cf; --sand-ink:#5a4a2a;
+  --ok:#2e7a4e; --ok-bg:#e3f2e8; --warn:#a86c12; --warn-bg:#fbefd9; --no:#b03838; --no-bg:#f8e3e3;
+  --display:"Do Hyeon","Apple SD Gothic Neo","Malgun Gothic",sans-serif;
+  --body:"Gowun Dodum","Apple SD Gothic Neo","Malgun Gothic",sans-serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0f181a; --surface:#16232600; --surface:#162326; --sunk:#1b2b2f; --ink:#e4eeee; --muted:#9fb3b4;
+  --line:#2b3d41; --river:#5fb2cf; --river-ink:#0c1a1e; --sand:#3a3222; --sand-ink:#ecd9ae;
+  --ok:#6fcb93; --ok-bg:#183327; --warn:#e7b25c; --warn-bg:#3a2c14; --no:#ec8080; --no-bg:#3b1d1d; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0f181a; --surface:#162326; --sunk:#1b2b2f; --ink:#e4eeee; --muted:#9fb3b4;
+  --line:#2b3d41; --river:#5fb2cf; --river-ink:#0c1a1e; --sand:#3a3222; --sand-ink:#ecd9ae;
+  --ok:#6fcb93; --ok-bg:#183327; --warn:#e7b25c; --warn-bg:#3a2c14; --no:#ec8080; --no-bg:#3b1d1d; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.6;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:20px 48px}
+.wrap{max-width:760px;margin:0 auto;display:grid;gap:20px}
+h1,h2,h3{font-family:var(--display);font-weight:400;margin:0;text-wrap:balance;letter-spacing:.01em}
+h1{font-size:2rem;line-height:1.2}
+h2{font-size:1.35rem}
+p{margin:0}
+.muted{color:var(--muted)}
+header{display:grid;gap:6px}
+.eyebrow{font-size:.8rem;letter-spacing:.12em;color:var(--river)}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:18px;display:grid;gap:14px}
+.facts{display:grid;grid-template-columns:5.5em 1fr;gap:6px 12px;margin:0}
+.facts dt{color:var(--muted)}
+.facts dd{margin:0;min-width:0}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{font:inherit;font-size:.95rem;border:1px solid var(--line);background:var(--sunk);color:var(--ink);border-radius:999px;padding:6px 14px;cursor:pointer}
+.chip[aria-pressed="true"]{background:var(--river);border-color:var(--river);color:var(--river-ink)}
+.chip:focus-visible,button:focus-visible,input:focus-visible,textarea:focus-visible{outline:3px solid var(--river);outline-offset:2px}
+.tag{display:inline-block;background:var(--sand);color:var(--sand-ink);border-radius:6px;padding:2px 8px;font-size:.85rem}
+label{display:grid;gap:6px;font-weight:700}
+label small{font-weight:400;color:var(--muted)}
+input,textarea{font:inherit;color:var(--ink);background:var(--sunk);border:1px solid var(--line);border-radius:8px;padding:10px 12px;width:100%}
+textarea{min-height:120px;resize:vertical}
+.row2{display:grid;grid-template-columns:8em 1fr;gap:12px}
+@media (max-width:480px){.row2{grid-template-columns:1fr}}
+.actions{display:flex;flex-wrap:wrap;gap:10px}
+button.btn{font:inherit;font-weight:700;border-radius:10px;padding:12px 18px;border:1px solid var(--river);cursor:pointer;background:var(--surface);color:var(--river)}
+button.btn.primary{background:var(--river);color:var(--river-ink)}
+button.btn:disabled{opacity:.55;cursor:default}
+.hint{font-size:.9rem;color:var(--muted)}
+.status{font-size:.95rem;color:var(--warn)}
+/* 판정서 */
+.report{background:var(--surface);border:2px solid var(--ink);border-radius:4px;padding:20px;display:grid;gap:14px;position:relative}
+.report-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;border-bottom:2px solid var(--ink);padding-bottom:10px}
+.report-head h2{font-size:1.5rem}
+.meta{font-size:.9rem;color:var(--muted);text-align:right}
+.badge{display:inline-block;font-size:.8rem;padding:2px 8px;border-radius:4px;border:1px solid currentColor}
+.badge.example{color:var(--warn)}
+.badge.ai{color:var(--river)}
+.badge.rule{color:var(--muted)}
+.sol{display:grid;gap:8px}
+.sol .name{font-family:var(--display);font-size:1.25rem}
+.sol ol{margin:0;padding-left:1.3em}
+.verdict-table{width:100%;border-collapse:collapse;font-size:.95rem}
+.verdict-table th,.verdict-table td{border-top:1px solid var(--line);padding:9px 6px;text-align:left;vertical-align:top}
+.verdict-table th{font-weight:700;width:11em}
+.mark{display:inline-flex;align-items:center;justify-content:center;width:2.2em;height:2.2em;border-radius:50%;font-family:var(--display);font-size:1.05rem}
+.mark.ok{background:var(--ok-bg);color:var(--ok)}
+.mark.partial{background:var(--warn-bg);color:var(--warn)}
+.mark.no{background:var(--no-bg);color:var(--no)}
+.col-mark{width:3em}
+.stamp{font-family:var(--display);font-size:1.3rem;border:3px solid currentColor;border-radius:8px;padding:6px 14px;transform:rotate(-3deg);display:inline-block}
+.stamp.ok{color:var(--ok)} .stamp.partial{color:var(--warn)} .stamp.no{color:var(--no)}
+.foot{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:center}
+.tips{margin:0;padding-left:1.2em}
+.note{font-size:.85rem;color:var(--muted);border-top:1px dashed var(--line);padding-top:10px}
+.tablewrap{overflow-x:auto}
+/* modal */
+.modal{position:fixed;inset:0;background:rgba(10,20,22,.6);display:grid;place-items:center;padding:max(16px,env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) max(16px,env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px));z-index:20}
+.modal-box{background:var(--surface);color:var(--ink);border-radius:12px;padding:16px;max-width:640px;width:100%;max-height:100%;overflow:auto;display:grid;gap:12px}
+.modal-box img{border:1px solid var(--line);border-radius:6px;width:100%}
+@media (prefers-reduced-motion:no-preference){.report.fresh{animation:pop .35s ease-out}@keyframes pop{from{transform:translateY(6px);opacity:.6}to{transform:none;opacity:1}}}
+</style>
+
+<div class="wrap">
+  <header>
+    <span class="eyebrow">기술·가정 · 적정기술</span>
+    <h1>물빛 마을 판정기</h1>
+    <p class="muted">재료를 골라 해결책을 쓰고 판정을 받아 보세요. 판정서를 캡처해 데스모스에 올립니다.</p>
+  </header>
+
+  <section class="panel" aria-labelledby="village-h">
+    <h2 id="village-h">물빛 마을 의뢰</h2>
+    <dl class="facts">
+      <dt>환경</dt><dd>비가 적고 햇빛이 강해요. 전기가 없고 땔감이 귀해요. 병원까지 걸어서 반나절이 걸려요.</dd>
+      <dt>문제</dt><dd>강물이 흐려서 아이들이 물로 옮는 병(설사병)에 자주 걸려요.</dd>
+      <dt>살림</dt><dd>돈이 넉넉하지 않고, 물건을 사려면 도시 시장까지 걸어서 하루가 걸려요.</dd>
+      <dt>재료</dt><dd>아래 목록에는 마을에서 쉽게 구할 수 있는 것과 구할 수 없는 것이 섞여 있어요. 마을 형편에 맞는 재료를 스스로 골라 보세요.</dd>
+    </dl>
+  </section>
+
+  <section class="panel" aria-labelledby="form-h">
+    <h2 id="form-h">나의 해결책</h2>
+    <form id="f" class="panel" style="border:0;padding:0" novalidate>
+      <label for="title">해결책 이름<input id="title" placeholder="예: 숯 모래 정수 병" maxlength="40"></label>
+      <div style="display:grid;gap:8px">
+        <span style="font-weight:700">쓸 재료 고르기</span>
+        <div class="chips" id="mats" role="group" aria-label="마을 재료"></div>
+      </div>
+      <label for="extra">목록에 없는 재료 <small>꼭 필요하면 적어요. 없으면 비워 두세요.</small><input id="extra" placeholder="예: 없음" maxlength="60"></label>
+      <label for="method">만드는 방법과 쓰는 방법 <small>한 줄에 한 단계씩</small><textarea id="method" placeholder="1. 페트병 바닥을 잘라 거꾸로 세운다&#10;2. …"></textarea></label>
+      <label for="principle">원리 한 줄<input id="principle" placeholder="왜 물이 깨끗해지는지 한 줄로" maxlength="120"></label>
+      <div class="actions">
+        <button type="submit" class="btn primary" id="judgeBtn">판정 받기</button>
+        <button type="button" class="btn" id="aiBtn" hidden>AI 판정 받기</button>
+        <button type="button" class="btn" id="resetBtn">새로 쓰기</button>
+      </div>
+      <p class="status" id="status" role="status" aria-live="polite"></p>
+    </form>
+  </section>
+
+  <section aria-labelledby="report-h" style="display:grid;gap:12px">
+    <div class="report" id="report">
+      <div class="report-head">
+        <div style="display:grid;gap:4px">
+          <h2 id="report-h">물빛 마을 판정서</h2>
+          <span id="rBadge" class="badge example">예시</span>
+        </div>
+        <div class="meta"><div id="rDate"></div></div>
+      </div>
+      <div class="sol">
+        <div class="name" id="rTitle"></div>
+        <div class="chips" id="rMats"></div>
+        <ol id="rSteps"></ol>
+        <p id="rPrinciple" class="muted"></p>
+      </div>
+      <div class="tablewrap">
+        <table class="verdict-table">
+          <thead><tr><th scope="col">판정 기준</th><th scope="col" class="col-mark">판정</th><th scope="col">까닭</th></tr></thead>
+          <tbody id="rRows"></tbody>
+        </table>
+      </div>
+      <div class="foot">
+        <span class="stamp" id="rStamp"></span>
+        <span class="muted" id="rScore"></span>
+      </div>
+      <div id="rTipsWrap"><strong>고칠 점</strong><ul class="tips" id="rTips"></ul></div>
+      <p class="note" id="rNote"></p>
+    </div>
+    <div class="actions">
+      <button type="button" class="btn primary" id="capBtn">판정서 캡처하기</button>
+    </div>
+    <p class="hint">캡처한 이미지를 데스모스에 올리고, 판정이 맞는지 내 생각을 함께 써 주세요.</p>
+  </section>
+</div>
+
+<div class="modal" id="modal" hidden role="dialog" aria-modal="true" aria-labelledby="modal-h">
+  <div class="modal-box">
+    <h2 id="modal-h">캡처한 판정서</h2>
+    <img id="capImg" alt="캡처한 판정서 이미지">
+    <p class="hint" id="capHint">이미지를 길게 눌러 저장하거나, 저장 버튼을 눌러 주세요.</p>
+    <div class="actions">
+      <button type="button" class="btn primary" id="saveBtn">이미지 저장</button>
+      <button type="button" class="btn" id="closeBtn">닫기</button>
+    </div>
+    <p class="status" id="saveStatus" role="status" aria-live="polite"></p>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script>
+// Village materials (easy to get) and outside items (must be bought, need power or fuel), shown mixed
+const MATERIALS=["페트병","굵은 모래","고운 모래","자갈","숯","면 천","점토 항아리","대나무","끈","햇빛"];
+const OUTSIDE={
+  "정수기":{why:"비싸고 전기가 필요해요",elec:true,filter:true},
+  "전기 펌프":{why:"전기가 필요해요",elec:true},
+  "염소 소독약":{why:"계속 사야 해요",chem:true},
+  "태양광 패널":{why:"비싸고 고장 나면 고치기 어려워요"},
+  "가스버너와 냄비":{why:"가스를 계속 사야 해요",fire:true},
+  "정수 필터 카트리지":{why:"자주 사서 갈아 끼워야 해요",filter:true},
+  "자외선 살균기":{why:"비싸고 전기가 필요해요",elec:true,disinfect:true},
+  "생수":{why:"계속 사 와야 해요",filter:true,disinfect:true}
+};
+const CHOICES=["페트병","정수기","굵은 모래","전기 펌프","숯","염소 소독약","면 천","자갈","태양광 패널","고운 모래","가스버너와 냄비","점토 항아리","정수 필터 카트리지","대나무","자외선 살균기","끈","생수","햇빛"];
+const CONDS=["주변에서 쉽게 얻는 재료만 썼나요?","만드는 방법이 잘 되었나요?","만드는 방법이 쉬운가요?"];
+const $=id=>document.getElementById(id);
+const picked=new Set();
+
+/* ---------- material chips ---------- */
+CHOICES.forEach(m=>{
+  const b=document.createElement("button");
+  b.type="button";b.className="chip";b.textContent=m;b.setAttribute("aria-pressed","false");
+  b.addEventListener("click",()=>{picked.has(m)?picked.delete(m):picked.add(m);b.setAttribute("aria-pressed",String(picked.has(m)));saveDraft();});
+  $("mats").appendChild(b);
+});
+function syncChips(){[...$("mats").children].forEach(b=>b.setAttribute("aria-pressed",String(picked.has(b.textContent))));}
+
+/* ---------- rule-based judge ---------- */
+const OUT_WORDS=["정수기","카트리지","펌프","모터","센서","배터리","태양광 패널","태양 전지","충전","스마트폰","앱","락스","표백제","염소","소독약","약품","알약","기계","수도관","냄비","주전자","플라스틱 필터","전구","램프"];
+const ELEC_WORDS=["전기","배터리","모터","펌프","충전","센서","태양광 패널","태양 전지","전구","램프"];
+const FIRE_WORDS=["끓이","끓여","끓인","끓는","가열","장작","땔감","숯불","불을 피","불에","데우","데워"];
+const CHEM_WORDS=["락스","표백제","염소","소독약","약품","알약"];
+const FILTER_WORDS=["거르","걸러","거른","여과","필터","가라앉"];
+const SUN_WORDS=["햇빛","햇볕","자외선"];
+function clean(t){ // remove negated mentions so "전기 없이" does not count as using electricity
+  return t.replace(/(전기|불|땔감)\s*(가|를|은|는)?\s*(없이|없는|안\s*쓰|쓰지\s*않|필요\s*없|필요하지\s*않)/g," ")
+          .replace(/끓이지\s*않/g," ");
+}
+function found(t,words){return words.filter(w=>t.includes(w));}
+function josa(word,withFinal,without){ // 은/는, 을/를 by the last syllable's final consonant
+  const c=word.trim().slice(-1).charCodeAt(0);
+  if(c<0xAC00||c>0xD7A3) return withFinal+"("+without+")";
+  return (c-0xAC00)%28?withFinal:without;
+}
+function steps(method){return method.split(/\n+/).map(s=>s.replace(/^\s*(\d+[.)]|[-•·])\s*/,"").trim()).filter(Boolean);}
+
+function judge(s){
+  const t=clean([s.title,s.method,s.principle].join(" "));
+  const extra=s.extra.trim();
+  const extraUsed=extra && !/^(없음|없다|없어요|x|X|-)$/.test(extra);
+  const mats=[...s.mats];
+  const outPicked=mats.filter(m=>OUTSIDE[m]);
+  const village=mats.filter(m=>!OUTSIDE[m]);
+  const outHits=[...new Set(outPicked.concat(found(t,OUT_WORDS)).concat(extraUsed?[extra]:[]))];
+  const elec=[...new Set(outPicked.filter(m=>OUTSIDE[m].elec).concat(found(t,ELEC_WORDS)))];
+  const fire=[...new Set(outPicked.filter(m=>OUTSIDE[m].fire).concat(found(t,FIRE_WORDS)))];
+  const chem=[...new Set(outPicked.filter(m=>OUTSIDE[m].chem).concat(found(t,CHEM_WORDS)))];
+  const filterMat=village.some(m=>["굵은 모래","고운 모래","자갈","숯","면 천"].includes(m))||outPicked.some(m=>OUTSIDE[m].filter);
+  const filter=filterMat||found(t,FILTER_WORDS).length>0;
+  const sun=(mats.includes("햇빛")&&(mats.includes("페트병")||t.includes("병")))||found(t,SUN_WORDS).length>0||t.includes("6시간");
+  const disinfect=sun||fire.length>0||outPicked.some(m=>OUTSIDE[m].disinfect);
+  const st=steps(s.method);
+  const rows=[];
+  const short=s.method.trim().length<10;
+  // 1 주변에서 쉽게 얻는 재료만 썼나
+  const why=[];
+  const coveredBy=x=>outPicked.some(m=>m.includes(x)||x.includes(m))||(x==="전기"&&outPicked.some(m=>OUTSIDE[m].elec));
+  outPicked.forEach(m=>why.push(m+josa(m,"은","는")+" "+OUTSIDE[m].why+"."));
+  const textOut=Object.keys(OUTSIDE).filter(k=>!outPicked.includes(k)&&t.includes(k));
+  textOut.forEach(k=>why.push(k+josa(k,"은","는")+" "+OUTSIDE[k].why+"."));
+  const otherOut=outHits.filter(x=>!OUTSIDE[x]&&!coveredBy(x)&&!ELEC_WORDS.includes(x)&&!textOut.some(k=>k.includes(x)));
+  if(otherOut.length){const l=otherOut.join(", ");why.push(l+josa(l,"은","는")+" 물빛 마을에서 구할 수 없어요.");}
+  const elecText=elec.filter(x=>!OUTSIDE[x]&&!coveredBy(x));
+  if(elecText.length){const l=elecText.join(", ");why.push("전기가 없는 마을이라 "+l+josa(l,"을","를")+" 쓸 수 없어요.");}
+  if(fire.length&&!outPicked.some(m=>OUTSIDE[m].fire)) why.push("땔감이 귀해서 매일 불을 피워 끓이기 어려워요.");
+  if(!mats.length&&!extraUsed) rows.push(["no","재료를 하나도 고르지 않았어요."]);
+  else if(why.length) rows.push(["no",why.join(" ")]);
+  else rows.push(["ok","고른 재료("+mats.join(", ")+")는 모두 물빛 마을에서 쉽게 얻을 수 있어요."]);
+  // 2 만드는 방법이 잘 되었나
+  if(short) rows.push(["no","만드는 방법이 거의 없어요. 어떻게 만드는지 단계별로 써 주세요."]);
+  else if(chem.length) rows.push(["partial","소독약은 양을 잘못 넣으면 오히려 위험해요."]);
+  else if(filter&&disinfect) rows.push(["ok","흙을 거르고 세균까지 줄여서 마실 만큼 깨끗해져요."]);
+  else if(filter) rows.push(["partial","거르기만 하면 흙은 빠져도 세균이 남을 수 있어요."]);
+  else if(disinfect) rows.push(["partial",sun?"흐린 물은 햇빛이 잘 통하지 않아요. 먼저 걸러야 해요.":"끓이면 세균은 줄지만 흙은 그대로 남아요."]);
+  else rows.push(["no","물을 깨끗하게 만드는 단계가 보이지 않아요."]);
+  // 3 만드는 방법이 쉬운가
+  if(short) rows.push(["no","방법이 짧아서 다른 사람이 따라 만들기 어려워요."]);
+  else if(st.length>6) rows.push(["partial",st.length+"단계라 길어요. 마을 아이도 할 수 있게 줄여 보세요."]);
+  else if(elec.length) rows.push(["partial","전기 기계는 다루는 법을 따로 배워야 하고, 고장 나면 고치기 어려워요."]);
+  else rows.push(["ok",st.length+"단계라 마을 사람 누구나 따라 만들 수 있어요."]);
+  const tips=[];
+  if(rows[0][0]!=="ok") tips.push(fire.length?"끓이는 대신 투명 페트병에 담아 햇빛에 6시간 이상 두는 방법을 생각해 보세요.":"물빛 마을에서 쉽게 얻을 수 있는 재료로만 바꿔 보세요.");
+  if(rows[1][0]!=="ok"&&!short) tips.push(filter&&!disinfect?"거른 물을 소독하는 단계를 더해 보세요.":!filter&&disinfect?"먼저 흙을 거르는 단계를 더해 보세요.":rows[1][1]);
+  if(rows[2][0]!=="ok") tips.push(rows[2][1]);
+  if(!s.principle.trim()) tips.push("왜 물이 깨끗해지는지 원리를 한 줄로 써 보세요.");
+  return {conditions:rows.map(([mark,reason])=>({mark,reason})),tips:[...new Set(tips)].slice(0,3)};
+}
+function verdictOf(conds){
+  if(conds.every(c=>c.mark==="ok")) return {cls:"ok",text:"적정기술이에요"};
+  if(conds.some(c=>c.mark==="no")) return {cls:"no",text:"다시 설계해 봐요"};
+  return {cls:"partial",text:"조금만 고치면 적정기술이에요"};
+}
+
+/* ---------- render report ---------- */
+const MARK={ok:"○",partial:"△",no:"×"};
+const MARK_LABEL={ok:"맞음",partial:"부분",no:"아님"};
+function render(s,res,kind){
+  const r=$("report");
+  $("rBadge").className="badge "+kind;
+  $("rBadge").textContent=kind==="example"?"예시":kind==="ai"?"AI 판정":"판정 도우미(정해진 기준)";
+  const d=new Date();$("rDate").textContent=d.getFullYear()+". "+(d.getMonth()+1)+". "+d.getDate()+".";
+  $("rTitle").textContent=s.title||"(이름 없음)";
+  $("rMats").replaceChildren(...[...s.mats].map(m=>{const e=document.createElement("span");e.className="tag";e.textContent=m;return e;}));
+  if(s.extra.trim()&&!/^(없음|없다|없어요|-)$/.test(s.extra.trim())){const e=document.createElement("span");e.className="tag";e.textContent="목록 밖: "+s.extra.trim();$("rMats").appendChild(e);}
+  $("rSteps").replaceChildren(...steps(s.method).map(x=>{const li=document.createElement("li");li.textContent=x;return li;}));
+  $("rPrinciple").textContent=s.principle?"원리: "+s.principle:"";
+  $("rRows").replaceChildren(...CONDS.map((c,i)=>{
+    const cd=res.conditions[i]||{mark:"partial",reason:"판정하지 못했어요."};
+    const tr=document.createElement("tr");
+    const th=document.createElement("th");th.scope="row";th.textContent=c;
+    const tdm=document.createElement("td");const m=document.createElement("span");m.className="mark "+cd.mark;m.textContent=MARK[cd.mark]||"△";m.setAttribute("aria-label",MARK_LABEL[cd.mark]||"부분");tdm.appendChild(m);
+    const tdr=document.createElement("td");tdr.textContent=cd.reason;
+    tr.append(th,tdm,tdr);return tr;}));
+  const v=verdictOf(res.conditions);
+  $("rStamp").className="stamp "+v.cls;$("rStamp").textContent=v.text;
+  const score=res.conditions.reduce((a,c)=>a+(c.mark==="ok"?2:c.mark==="partial"?1:0),0);
+  $("rScore").textContent="점수 "+score+" / "+(CONDS.length*2);
+  $("rTipsWrap").hidden=!res.tips.length;
+  $("rTips").replaceChildren(...res.tips.map(x=>{const li=document.createElement("li");li.textContent=x;return li;}));
+  $("rNote").textContent=kind==="ai"
+    ?"AI가 판정했어요. AI도 틀릴 수 있어요. 맞는지는 여러분이 조건으로 다시 따져 보세요."
+    :"판정 도우미는 정해진 기준으로만 판단해요. 맞는지는 여러분이 조건으로 다시 따져 보세요.";
+  r.classList.remove("fresh");void r.offsetWidth;r.classList.add("fresh");
+}
+
+/* ---------- form state ---------- */
+function readForm(){return {title:$("title").value.trim(),mats:new Set(picked),extra:$("extra").value,method:$("method").value,principle:$("principle").value.trim()};}
+function saveDraft(){try{localStorage.setItem("mulbit-draft",JSON.stringify({...readForm(),mats:[...picked]}));}catch(e){}}
+function loadDraft(){try{const d=JSON.parse(localStorage.getItem("mulbit-draft")||"null");if(!d)return;
+  $("title").value=d.title||"";$("extra").value=d.extra||"";$("method").value=d.method||"";$("principle").value=d.principle||"";
+  (d.mats||[]).forEach(m=>picked.add(m));syncChips();}catch(e){}}
+["title","extra","method","principle"].forEach(id=>$(id).addEventListener("input",saveDraft));
+
+function check(s){
+  if(!s.title) return "해결책 이름을 써 주세요.";
+  if(!s.mats.size && !s.extra.trim()) return "쓸 재료를 하나 이상 골라 주세요.";
+  if(s.method.trim().length<5) return "만드는 방법을 한 줄 이상 써 주세요.";
+  return "";
+}
+$("f").addEventListener("submit",e=>{
+  e.preventDefault();
+  const s=readForm();const err=check(s);$("status").textContent=err;if(err)return;
+  render(s,judge(s),"rule");
+  $("report").scrollIntoView({behavior:matchMedia("(prefers-reduced-motion: reduce)").matches?"auto":"smooth",block:"start"});
+});
+$("resetBtn").addEventListener("click",()=>{
+  ["title","extra","method","principle"].forEach(id=>$(id).value="");picked.clear();syncChips();$("status").textContent="";
+  try{localStorage.removeItem("mulbit-draft");}catch(e){}
+});
+
+/* ---------- AI judge (only where this view can ask Claude) ---------- */
+let sample=null;
+function aiPrompt(s){
+  return `너는 중학교 3학년 기술·가정 적정기술 수업의 판정 도우미야. 아래 마을 형편과 학생 해결책을 보고 판정 기준 3가지로 채점하고, 무엇이 문제인지 알려 줘.
+
+[마을] 비가 적고 햇빛이 강하다. 전기가 없고 땔감이 귀하다. 돈이 넉넉하지 않고 도시 시장까지 걸어서 하루. 강물이 흐려 아이들이 설사병에 자주 걸린다.
+[마을에서 쉽게 얻는 것] ${MATERIALS.join(", ")}
+[마을에서 쉽게 얻을 수 없는 것] ${Object.keys(OUTSIDE).map(k=>k+"("+OUTSIDE[k].why+")").join(", ")}, 전기, 땔감을 매일 쓰는 일
+
+[판정 기준]
+1. 주변에서 쉽게 얻는 재료만 썼나요?
+2. 만드는 방법이 잘 되었나요? (물이 정말 깨끗하고 안전해지는가. 모래·숯으로 거르기만 하면 세균이 남을 수 있고, 흐린 물은 햇빛 소독이 잘 안 된다)
+3. 만드는 방법이 쉬운가요? (마을 사람 누구나 따라 만들고 쓸 수 있는가)
+
+[학생 해결책]
+이름: ${s.title}
+고른 재료: ${[...s.mats].join(", ")||"없음"}
+목록에 없는 재료: ${s.extra.trim()||"없음"}
+방법:
+${s.method.slice(0,1500)}
+원리: ${s.principle||"없음"}
+
+중학생이 이해할 쉬운 말로, 이유는 기준마다 한두 문장으로 써. 문제가 있으면 무엇이 왜 문제인지 분명히 말해 줘.
+mark는 맞으면 "ok", 일부만 맞으면 "partial", 아니면 "no".
+다음 모양의 JSON만 답해:
+{"conditions":[{"mark":"ok","reason":"..."},{"mark":"...","reason":"..."},{"mark":"...","reason":"..."}],"tips":["고칠 점 최대 3개"]}`;
+}
+$("aiBtn").addEventListener("click",async()=>{
+  const s=readForm();const err=check(s);$("status").textContent=err;if(err||!sample)return;
+  const btn=$("aiBtn");btn.disabled=true;$("status").textContent="AI가 판정하고 있어요…";
+  try{
+    const out=await sample.json(aiPrompt(s));
+    const ok=v=>["ok","partial","no"].includes(v);
+    const conds=Array.isArray(out?.conditions)?out.conditions.slice(0,CONDS.length).map(c=>({mark:ok(c?.mark)?c.mark:"partial",reason:String(c?.reason||"")})):[];
+    if(conds.length<CONDS.length) throw {code:"invalid_json"};
+    const tips=Array.isArray(out?.tips)?out.tips.map(String).filter(Boolean).slice(0,3):[];
+    render(s,{conditions:conds,tips},"ai");$("status").textContent="";
+    $("report").scrollIntoView({block:"start"});
+  }catch(e){
+    const c=e&&e.code;
+    if(c==="not_granted"||c==="sampling_disabled"||c==="not_declared"||c==="capability_disabled"||c==="capability_removed"){btn.hidden=true;$("status").textContent="이 화면에서는 AI 판정을 쓸 수 없어요. '판정 받기'를 눌러 주세요.";}
+    else if(c==="rate_limited"){$("status").textContent="요청이 많아요. 잠시 뒤에 다시 눌러 주세요.";}
+    else if(c==="cancelled"){$("status").textContent="";}
+    else {$("status").textContent="AI 판정을 받지 못했어요. 다시 누르거나 '판정 받기'를 써 주세요.";}
+  }finally{btn.disabled=false;}
+});
+
+/* ---------- capture ---------- */
+let downloads=null, lastBlob=null, lastName="";
+const standalone=typeof window.claude==="undefined";
+$("capBtn").addEventListener("click",async()=>{
+  if(typeof html2canvas!=="function"){$("status").textContent="캡처 도구를 불러오지 못했어요. 화면 캡처로 저장해 주세요.";return;}
+  const btn=$("capBtn");btn.disabled=true;btn.textContent="캡처 중…";
+  try{
+    const bg=getComputedStyle($("report")).backgroundColor;
+    const canvas=await html2canvas($("report"),{scale:2,backgroundColor:bg,useCORS:true,logging:false});
+    const url=canvas.toDataURL("image/png");
+    lastBlob=await new Promise(r=>canvas.toBlob(r,"image/png"));
+    lastName="물빛마을_판정서_"+((readForm().title||"해결책").replace(/[\\/:*?"<>|]/g,"").slice(0,30)||"해결책")+".png";
+    $("capImg").src=url;$("saveStatus").textContent="";
+    $("saveBtn").hidden=!(downloads||standalone);
+    $("capHint").textContent=(downloads||standalone)?"저장 버튼을 누르거나, 이미지를 길게 눌러 저장하세요.":"이미지를 길게 눌러 저장하거나, 이 화면을 캡처해 주세요.";
+    $("modal").hidden=false;$("closeBtn").focus();
+  }catch(e){$("status").textContent="캡처하지 못했어요. 화면 캡처로 저장해 주세요.";}
+  finally{btn.disabled=false;btn.textContent="판정서 캡처하기";}
+});
+$("saveBtn").addEventListener("click",async()=>{
+  if(!lastBlob)return;
+  if(downloads){
+    try{await downloads.save({filename:lastName,data:lastBlob});$("saveStatus").textContent="저장했어요. 데스모스에 올려 주세요.";}
+    catch(e){$("saveStatus").textContent=e&&e.code==="declined"?"저장을 취소했어요.":"저장하지 못했어요. 이미지를 길게 눌러 저장해 주세요.";}
+  }else if(standalone){
+    const a=document.createElement("a");a.href=URL.createObjectURL(lastBlob);a.download=lastName;document.body.appendChild(a);a.click();a.remove();
+    $("saveStatus").textContent="저장했어요. 데스모스에 올려 주세요.";
+  }
+});
+$("closeBtn").addEventListener("click",()=>{$("modal").hidden=true;$("capBtn").focus();});
+$("modal").addEventListener("click",e=>{if(e.target===$("modal"))$("modal").hidden=true;});
+document.addEventListener("keydown",e=>{if(e.key==="Escape"&&!$("modal").hidden)$("modal").hidden=true;});
+
+/* ---------- start: example report, draft, capabilities ---------- */
+const EXAMPLE={title:"숯 모래 정수 병",mats:new Set(["페트병","자갈","굵은 모래","고운 모래","숯","면 천","햇빛"]),extra:"",
+  method:"1. 페트병 바닥을 잘라 거꾸로 세운다\n2. 입구에 면 천을 대고 숯, 고운 모래, 굵은 모래, 자갈 순서로 쌓는다\n3. 흙탕물을 붓고 아래로 나온 물을 받는다\n4. 거른 물을 투명 페트병에 담아 햇빛에 6시간 이상 둔다",
+  principle:"모래와 숯 사이를 지나며 흙이 걸러지고, 햇빛이 세균을 줄인다"};
+render(EXAMPLE,judge(EXAMPLE),"example");
+loadDraft();
+if(window.claude&&typeof window.claude.use==="function"){
+  window.claude.use("sample").then(s=>{if(s){sample=s;$("aiBtn").hidden=false;}}).catch(()=>{});
+  window.claude.use("downloads").then(d=>{downloads=d||null;}).catch(()=>{});
+}
+</script>
+</body></html>
